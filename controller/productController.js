@@ -1,7 +1,7 @@
 import { instance } from '../server.js';
 import Payment from '../models/payment.js';
 import crypto from 'crypto';
-import { connectDB } from "./server";
+import { connectDB } from "../server.js";
 
 
 

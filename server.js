@@ -18,7 +18,7 @@ export const instance = new Razorpay({
 
 // Share Mongo connection across invocations
 let mongoConn;
-async function connectDB() {
+export async function connectDB() {
   if (mongoConn) return mongoConn;
   mongoConn = await mongoose.connect(process.env.MONGO_URI);
   console.log("MongoDB Connected");
