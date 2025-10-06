@@ -1,6 +1,7 @@
 import { instance } from '../server.js';
 import Payment from '../models/payment.js';
 import crypto from 'crypto';
+import { connectDB } from "./server";
 
 
 
@@ -41,10 +42,10 @@ export const paymentVerification = async (req, res) => {
 
     if (isAuthentic) {
         return res.redirect(`http://localhost:5173/paymentsuccess?reference=${razorpay_payment_id}`);
-         res.status(200).json({
+        res.status(200).json({
             success: true,
         })
-    }else{
+    } else {
         res.status(400).json({
             success: false,
         })
@@ -56,20 +57,27 @@ export const paymentVerification = async (req, res) => {
 }
 
 
-export const paymentWebhook=async (req, res) => {
+export const paymentWebhook = async (req, res) => {
     console.log("Webhook received:", req.body);
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const shasum = crypto.createHmac("sha256", secret);
     shasum.update(JSON.stringify(req.body));
     const digest = shasum.digest("hex");
 
-    if (digest === req.headers["x-razorpay-signature"]) {
-        const event = req.body.event;
+    if (digest !== req.headers["x-razorpay-signature"]) {
+        return res.status(400).json({ status: "invalid signature" });
+    }
 
+    try {
+        // Ensure DB is connected
+        await connectDB();
+
+        const event = req.body.event;
         if (event === "payment.captured") {
             const payment = req.body.payload.payment.entity;
 
+            // Save payment to MongoDB
             await Payment.create({
                 payment_id: payment.id,
                 order_id: payment.order_id,
@@ -84,7 +92,8 @@ export const paymentWebhook=async (req, res) => {
         }
 
         res.status(200).json({ status: "ok" });
-    } else {
-        res.status(400).json({ status: "invalid signature" });
+    } catch (err) {
+        console.error("Error in webhook:", err);
+        res.status(500).json({ status: "error", message: err.message });
     }
 };
