@@ -56,34 +56,34 @@ export const paymentVerification = async (req, res) => {
 }
 
 
-export const paymentWebhook=async (req, res) => {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+// export const paymentWebhook=async (req, res) => {
+//     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-    const shasum = crypto.createHmac("sha256", secret);
-    shasum.update(JSON.stringify(req.body));
-    const digest = shasum.digest("hex");
+//     const shasum = crypto.createHmac("sha256", secret);
+//     shasum.update(JSON.stringify(req.body));
+//     const digest = shasum.digest("hex");
 
-    if (digest === req.headers["x-razorpay-signature"]) {
-        const event = req.body.event;
+//     if (digest === req.headers["x-razorpay-signature"]) {
+//         const event = req.body.event;
 
-        if (event === "payment.captured") {
-            const payment = req.body.payload.payment.entity;
+//         if (event === "payment.captured") {
+//             const payment = req.body.payload.payment.entity;
 
-            await Payment.create({
-                payment_id: payment.id,
-                order_id: payment.order_id,
-                amount: payment.amount / 100, // convert paise to INR
-                currency: payment.currency,
-                status: payment.status,
-                email: payment.email,
-                contact: payment.contact,
-            });
+//             await Payment.create({
+//                 payment_id: payment.id,
+//                 order_id: payment.order_id,
+//                 amount: payment.amount / 100, // convert paise to INR
+//                 currency: payment.currency,
+//                 status: payment.status,
+//                 email: payment.email,
+//                 contact: payment.contact,
+//             });
 
-            console.log("Payment saved:", payment.id);
-        }
+//             console.log("Payment saved:", payment.id);
+//         }
 
-        res.status(200).json({ status: "ok" });
-    } else {
-        res.status(400).json({ status: "invalid signature" });
-    }
-};
+//         res.status(200).json({ status: "ok" });
+//     } else {
+//         res.status(400).json({ status: "invalid signature" });
+//     }
+// };
