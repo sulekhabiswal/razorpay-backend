@@ -57,6 +57,7 @@ export const paymentVerification = async (req, res) => {
 
 
 export const paymentWebhook=async (req, res) => {
+    console.log("Webhook received:", req.body);
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
     const shasum = crypto.createHmac("sha256", secret);
