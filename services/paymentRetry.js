@@ -1,6 +1,6 @@
 // services/paymentRetry.js
 import Payment from "../models/payment.js"; // Adjust path as needed
-import connectDB from "../config/db.js";
+import {connectDB} from "../server.js"; // Adjust path as needed
 
 /**
  * Wait for the payment to be captured in DB
