@@ -12,7 +12,7 @@ import { connectDB } from "../server.js"; // Adjust path as needed
 export const waitForPaymentCapture = async (
   order_id,
   interval = 2000,
-  maxAttempts = 10
+  maxAttempts = 5
 ) => {
   await connectDB();
 
@@ -24,7 +24,8 @@ export const waitForPaymentCapture = async (
 
       try {
         const payment = await Payment.findOne({ order_id });
-
+  // Log current attempt and status
+        console.log(`Retry attempt ${attempts} for order_id ${order_id}:`, payment?.status || "not found");
         if (!payment) {
           clearInterval(timer);
           return reject({ status: "not_found", attempts });
