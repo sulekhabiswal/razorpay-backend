@@ -129,36 +129,36 @@ export const paymentWebhook = async (req, res) => {
         if (event === "payment.captured") {
             const payment = req.body.payload.payment.entity;
 
-            //   // Try to find existing record by order_id
-            //   const existingPayment = await Payment.findOne({ order_id: payment.order_id });
+            // Try to find existing record by order_id
+            const existingPayment = await Payment.findOne({ order_id: payment.order_id });
 
-            //   if (existingPayment) {
-            //     // Record exists, update payment_id and status
-            //     await Payment.updateOne(
-            //       { order_id: payment.order_id },
-            //       {
-            //         $set: {
-            //           payment_id: payment.id,
-            //           status: payment.status, // captured
-            //           amount: payment.amount / 100,
-            //           currency: payment.currency,
-            //           email: payment.email,
-            //           contact: payment.contact,
-            //         },
-            //       }
-            //     );
-            //   } else {
-            //     // Record does not exist (webhook came first) → create a new one
-            //     await Payment.create({
-            //       order_id: payment.order_id,
-            //       payment_id: payment.id,
-            //       amount: payment.amount / 100,
-            //       status: payment.status, // captured
-            //       currency: payment.currency,
-            //       email: payment.email,
-            //       contact: payment.contact,
-            //     });
-            //   }
+            if (existingPayment) {
+                // Record exists, update payment_id and status
+                await Payment.updateOne(
+                    { order_id: payment.order_id },
+                    {
+                        $set: {
+                            payment_id: payment.id,
+                            status: payment.status, // captured
+                            amount: payment.amount / 100,
+                            currency: payment.currency,
+                            email: payment.email,
+                            contact: payment.contact,
+                        },
+                    }
+                );
+            } else {
+                // Record does not exist (webhook came first) → create a new one
+                await Payment.create({
+                    order_id: payment.order_id,
+                    payment_id: payment.id,
+                    amount: payment.amount / 100,
+                    status: payment.status, // captured
+                    currency: payment.currency,
+                    email: payment.email,
+                    contact: payment.contact,
+                });
+            }
         }
 
         res.status(200).json({ status: "ok" });
