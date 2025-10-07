@@ -1,5 +1,5 @@
 import express from 'express';
-import { processPayment, getKey, paymentVerification,paymentWebhook,processPayment,getPaymentStatus} from '../controller/productController.js';    
+import { processPayment, getKey, paymentVerification,paymentWebhook,getPaymentStatus} from '../controller/productController.js';    
 const router = express.Router();
 
 router.route('/payment/process').post(processPayment);
