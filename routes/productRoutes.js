@@ -7,6 +7,6 @@ router.route('/getKey').get(getKey);
 router.route('/paymentVerification').post(paymentVerification);
 router.route("/payment/webhook").post(paymentWebhook);
 router.route("/payment/process").post(processPayment);
-router.route("/payment-status").get(getPaymentStatus);
+router.route("/payment-status").post(getPaymentStatus);
 
 export default router;
