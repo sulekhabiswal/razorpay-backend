@@ -1,6 +1,6 @@
 // services/paymentRetry.js
 import Payment from "../models/payment.js"; // Adjust path as needed
-import {connectDB} from "../server.js"; // Adjust path as needed
+import { connectDB } from "../server.js"; // Adjust path as needed
 
 /**
  * Wait for the payment to be captured in DB
@@ -9,7 +9,11 @@ import {connectDB} from "../server.js"; // Adjust path as needed
  * @param {number} maxAttempts - Max retries
  * @returns {Promise<string>} - Resolves with status or rejects on failure
  */
-export const waitForPaymentCapture = async (payment_id, interval = 2000, maxAttempts = 10) => {
+export const waitForPaymentCapture = async (
+  order_id,
+  interval = 2000,
+  maxAttempts = 10
+) => {
   await connectDB();
 
   let attempts = 0;
@@ -17,28 +21,43 @@ export const waitForPaymentCapture = async (payment_id, interval = 2000, maxAtte
   return new Promise((resolve, reject) => {
     const timer = setInterval(async () => {
       attempts++;
+
       try {
-        const payment = await Payment.findOne({ payment_id });
+        const payment = await Payment.findOne({ order_id });
 
         if (!payment) {
           clearInterval(timer);
-          return reject("Payment not found");
+          return reject({ status: "not_found", attempts });
         }
 
-        if (payment.status === "captured") {
-          clearInterval(timer);
-          return resolve("captured");
-        } else if (payment.status === "failed" || payment.status === "refunded") {
-          clearInterval(timer);
-          return reject(payment.status);
-        } else if (attempts >= maxAttempts) {
-          clearInterval(timer);
-          return reject("timeout");
+        switch (payment.status) {
+          case "captured":
+            clearInterval(timer);
+            return resolve({ status: "captured", attempts });
+
+          case "INPROGRESS":
+            if (attempts >= maxAttempts) {
+              clearInterval(timer);
+              return reject({ status: "timeout", attempts });
+            }
+            // else continue retrying
+            break;
+
+          case "failed":
+          case "refunded":
+            clearInterval(timer);
+            return reject({ status: payment.status, attempts });
+
+          default:
+            if (attempts >= maxAttempts) {
+              clearInterval(timer);
+              return reject({ status: payment.status || "unknown", attempts });
+            }
+            // continue retrying
         }
-        // else: still pending/inprogress, continue retrying
       } catch (err) {
         clearInterval(timer);
-        return reject(err);
+        return reject({ status: "error", error: err, attempts });
       }
     }, interval);
   });
