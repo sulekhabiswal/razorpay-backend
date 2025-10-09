@@ -8,7 +8,9 @@ const PaymentSchema = new mongoose.Schema({
   status: String,
   email: String,
   contact: String,
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  product_number: Number,                 // 1,2,3...
+  granted_features: { type: [String], default: [] } // keep empty until captured
 });
 
 export default mongoose.model("Payment", PaymentSchema);

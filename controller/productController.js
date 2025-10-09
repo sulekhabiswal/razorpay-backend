@@ -3,6 +3,7 @@ import Payment from '../models/payment.js';
 import crypto from 'crypto';
 import { connectDB } from "../server.js";
 import { waitForPaymentCapture } from '../services/paymentRetry.js';
+import { featureMap } from "../config/featureMapping.js";
 
 
 
@@ -21,27 +22,25 @@ export const processPayment = async (req, res) => {
 
         // Check if a record for this order_id already exists (webhook came first)
         const existingPayment = await Payment.findOne({ order_id: order.id });
-
-        if (existingPayment) {
-            // If record exists, just update amount and ensure status is correct if needed
-            await Payment.updateOne(
-                { order_id: order.id },
-                {
-                    $set: {
-                        amount: req.body.amount,
-                        status: existingPayment.status || "PENDING", // keep existing status if captured
-                        payment_id: existingPayment.payment_id || null,
-                    },
-                }
-            );
-        } else {
-            // If no record exists, create a new one
+        // existingPayment record not on the db means that the webhook has not fired yet , so we create a new record with status PENDING
+        if (!existingPayment) {
             await Payment.create({
                 order_id: order.id,
                 amount: req.body.amount,
                 status: "PENDING",
-                payment_id: null, // initially null
+                payment_id: null,
+                product_number: req.body.number,
+                granted_features: []
             });
+        } else {
+            await Payment.updateOne({ order_id: order.id },
+                {
+                    $set: {
+                        product_number: req.body.number,
+                       granted_features: featureMap[req.body.number] || []
+                    },
+                })
+            console.log(`Webhook already handled order ${order.id}, and processPayment is updating product_number only.`);
         }
 
         res.status(200).json({ success: true, order });
@@ -133,6 +132,7 @@ export const paymentWebhook = async (req, res) => {
             const existingPayment = await Payment.findOne({ order_id: payment.order_id });
 
             if (existingPayment) {
+                const featuresToGrant = featureMap[existingPayment.product_number] || [];
                 // Record exists, update payment_id and status
                 await Payment.updateOne(
                     { order_id: payment.order_id },
@@ -144,6 +144,7 @@ export const paymentWebhook = async (req, res) => {
                             currency: payment.currency,
                             email: payment.email,
                             contact: payment.contact,
+                            granted_features: featuresToGrant
                         },
                     }
                 );
@@ -157,6 +158,8 @@ export const paymentWebhook = async (req, res) => {
                     currency: payment.currency,
                     email: payment.email,
                     contact: payment.contact,
+                    granted_features: [],
+                    product_number: null
                 });
             }
         }
