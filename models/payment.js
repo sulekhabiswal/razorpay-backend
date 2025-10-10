@@ -10,7 +10,8 @@ const PaymentSchema = new mongoose.Schema({
   contact: String,
   createdAt: { type: Date, default: Date.now },
   product_number: Number,                 // 1,2,3...
-  granted_features: { type: [String], default: [] } // keep empty until captured
+  granted_features: { type: [String], default: [] },// keep empty until captured
+  feature_expiry: { type: Number, default: null }   // timestamp in milliseconds when feature expires
 });
 
 export default mongoose.model("Payment", PaymentSchema);

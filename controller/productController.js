@@ -3,7 +3,7 @@ import Payment from '../models/payment.js';
 import crypto from 'crypto';
 import { connectDB } from "../server.js";
 import { waitForPaymentCapture } from '../services/paymentRetry.js';
-import { featureMap } from "../config/featureMapping.js";
+import { featureMap, featureExpiryMap } from "../config/featureMapping.js";
 
 
 
@@ -30,14 +30,16 @@ export const processPayment = async (req, res) => {
                 status: "PENDING",
                 payment_id: null,
                 product_number: req.body.number,
-                granted_features: []
+                granted_features: [],
+                feature_expiry: null
             });
         } else {
             await Payment.updateOne({ order_id: order.id },
                 {
                     $set: {
                         product_number: req.body.number,
-                       granted_features: featureMap[req.body.number] || []
+                        granted_features: featureMap[req.body.number] || [],
+                        feature_expiry: Date.now() + (featureExpiryMap[req.body.number] || 0)
                     },
                 })
             console.log(`Webhook already handled order ${order.id}, and processPayment is updating product_number only.`);
@@ -133,6 +135,7 @@ export const paymentWebhook = async (req, res) => {
 
             if (existingPayment) {
                 const featuresToGrant = featureMap[existingPayment.product_number] || [];
+                const expiryTime = Date.now() + (featureExpiryMap[existingPayment.product_number] || 0);
                 // Record exists, update payment_id and status
                 await Payment.updateOne(
                     { order_id: payment.order_id },
@@ -144,7 +147,8 @@ export const paymentWebhook = async (req, res) => {
                             currency: payment.currency,
                             email: payment.email,
                             contact: payment.contact,
-                            granted_features: featuresToGrant
+                            granted_features: featuresToGrant,
+                            feature_expiry: expiryTime
                         },
                     }
                 );
@@ -159,7 +163,9 @@ export const paymentWebhook = async (req, res) => {
                     email: payment.email,
                     contact: payment.contact,
                     granted_features: [],
-                    product_number: null
+                    product_number: null,
+                    feature_expiry: null
+
                 });
             }
         }
@@ -169,6 +175,34 @@ export const paymentWebhook = async (req, res) => {
         console.error("Webhook error:", err);
         res.status(500).json({ status: "error", message: "Internal server error" });
     }
+};
+
+
+
+export const checkFeatureAccess = async (req, res) => {
+  try {
+    const { email, featureName } = req.body;
+
+    const payment = await Payment.findOne({
+      email,
+      granted_features: featureName
+    });
+
+    if (!payment) {
+      return res.status(403).json({ access: false, message: "Feature not granted" });
+    }
+
+    const now = Date.now();
+    if (payment.feature_expiry && now > payment.feature_expiry) {
+      return res.status(403).json({ access: false, message: "Feature expired" });
+    }
+
+    return res.status(200).json({ access: true, message: "Feature available" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ access: false, message: "Server error" });
+  }
 };
 
 
